@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: web
+    entrypoint: /entrypoint_web.sh   # свой entrypoint для web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./media:/app/media
+      - ./static:/app/static
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+    
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    entrypoint: /entrypoint_celery.sh  # свой entrypoint для worker
+    command: celery -A django_whisper_pipeline worker -l info
+    env_file: .env
+    volumes:
+      - ./media:/app/media
+      - ./static:/app/static
+    depends_on:
+      - redis
+      - db
+      
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    entrypoint: /entrypoint_celery.sh
+    command: celery -A django_whisper_pipeline beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: .env
+    volumes:
+      - ./celerybeat-schedule:/app/celerybeat-schedule
+      - ./media:/app/media
+      - ./static:/app/static
+    depends_on:
+      - redis
+      - db
+      
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:15-alpine
+    container_name: db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: transcriber
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
