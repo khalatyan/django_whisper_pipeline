@@ -6,8 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
 # Используем официальные зеркала (возвращаем исходные)
-RUN sed -i 's|http://mirror.yandex.ru/debian|http://deb.debian.org/debian|g' /etc/apt/sources.list && \
-    sed -i 's|http://mirror.yandex.ru/debian-security|http://security.debian.org/debian-security|g' /etc/apt/sources.list && \
+RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb [trusted=yes] http://mirror.yandex.ru/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ffmpeg \
