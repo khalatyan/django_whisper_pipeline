@@ -22,7 +22,9 @@ RUN pip config set global.index-url https://mirror.yandex.ru/pypi/simple/
 
 # Python зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt --timeout 120 --retries 10
+RUN pip install --default-timeout=120 --index-url https://mirror.yandex.ru/pypi/simple/ --upgrade pip
+RUN pip install --default-timeout=120 --index-url https://mirror.yandex.ru/pypi/simple/ -r requirements.txt
+
 
 # Копируем проект
 COPY . .
