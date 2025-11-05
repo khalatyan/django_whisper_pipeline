@@ -1,4 +1,4 @@
-FROM python:3.12
+FROM python:3.12-bullseye
 
 # Используем российское зеркало только для apt
 RUN sed -i 's|http://deb.debian.org/debian|http://mirror.yandex.ru/debian|g' /etc/apt/sources.list && \
@@ -17,6 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     cron \
     && rm -rf /var/lib/apt/lists/*
+
+
+# скачиваем с помощью pip в формате wheel для Linux
+docker run --rm -v $(pwd)/packages:/packages python:3.12-bullseye bash -c "\
+    pip install --upgrade pip && \
+    pip download --platform manylinux_2_38_x86_64 --only-binary=:all: --python-version 312 --implementation cp -r requirements.txt -d /packages \
+"
 
 # Копируем файл зависимостей Python
 COPY requirements.txt .
