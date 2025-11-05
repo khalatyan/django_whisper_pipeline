@@ -10,12 +10,15 @@ ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 
 # Установка системных зависимостей
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    ffmpeg \
-    libpq-dev \
-    netcat-openbsd \
-    cron \
+RUN apt-get update && apt-get install -y --no-install-recommends gnupg ca-certificates debian-archive-keyring && \
+    apt-key update && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ffmpeg \
+        libpq-dev \
+        netcat-openbsd \
+        cron \
     && rm -rf /var/lib/apt/lists/*
 
 # Копируем файл зависимостей Python
