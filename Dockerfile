@@ -11,19 +11,19 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
     echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
+        pkg-config \
+        libcairo2-dev \
+        gir1.2-pango-1.0 \
+        python3-dev \
         ffmpeg \
         libpq-dev \
         netcat-openbsd \
         cron \
-        libcairo2-dev \
-        pkg-config \
-        python3-dev \
-        gir1.2-pango-1.0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 COPY packages /app/packages
-RUN pip install --no-index --find-links=/app/packages -r requirements.txt
+RUN pip install --find-links=/app/packages -r requirements.txt
 
 COPY . .
 
