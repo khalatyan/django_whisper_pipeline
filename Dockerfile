@@ -18,13 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cron \
     && rm -rf /var/lib/apt/lists/*
 
-
-# скачиваем с помощью pip в формате wheel для Linux
-docker run --rm -v $(pwd)/packages:/packages python:3.12-bullseye bash -c "\
-    pip install --upgrade pip && \
-    pip download --platform manylinux_2_38_x86_64 --only-binary=:all: --python-version 312 --implementation cp -r requirements.txt -d /packages \
-"
-
 # Копируем файл зависимостей Python
 COPY requirements.txt .
 COPY packages /app/packages
