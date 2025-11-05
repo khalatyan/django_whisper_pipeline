@@ -18,6 +18,7 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
         libcairo2-dev \
         pkg-config \
         python3-dev \
+        gir1.2-pango-1.0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
