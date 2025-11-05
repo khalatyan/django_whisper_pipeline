@@ -15,8 +15,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libpq-dev \
     netcat-openbsd \
-    cron \
-    && rm -rf /var/lib/apt/lists/*
+    cron && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip
 RUN pip config set global.index-url https://mirror.yandex.ru/pypi/simple/
