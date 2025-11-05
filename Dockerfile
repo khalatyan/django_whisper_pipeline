@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     cron \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade pip
+RUN pip config set global.index-url https://mirror.yandex.ru/pypi/simple/
+
 # Python зависимости
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
