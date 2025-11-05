@@ -22,8 +22,6 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install meson meson-python
 COPY packages /app/packages
 RUN pip install --no-index --find-links=/app/packages -r requirements.txt
 
