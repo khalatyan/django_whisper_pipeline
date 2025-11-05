@@ -20,10 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Копируем файл зависимостей Python
 COPY requirements.txt .
-
-# Обновляем pip и устанавливаем зависимости Python с увеличенным таймаутом
-RUN pip install --upgrade pip --default-timeout=300 --no-cache-dir && \
-    pip install --default-timeout=300 --no-cache-dir -r requirements.txt
+COPY packages /app/packages
+COPY requirements.txt .
+RUN pip install --no-index --find-links=/app/packages -r requirements.txt
 
 # Копируем проект
 COPY . .
