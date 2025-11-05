@@ -16,7 +16,12 @@ SECRET_KEY = ')3+dol7)ofdnzek9i3gr!g3p)dil4t)2alwwjm$)0n$!hneckd'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["79.174.83.37"]
+ALLOWED_HOSTS = [
+    "127.0.0.1",        # для локальных запросов
+    "localhost",        # для локальных запросов
+    "79.174.83.37",     # внешний IP
+    # можно добавить домен, если есть
+]
 
 
 # Application definition
