@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye
+FROM python:3.12
 
 # Используем российское зеркало только для apt
 RUN sed -i 's|http://deb.debian.org/debian|http://mirror.yandex.ru/debian|g' /etc/apt/sources.list && \
