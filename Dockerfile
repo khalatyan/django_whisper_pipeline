@@ -18,6 +18,7 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
         ffmpeg \
         libpq-dev \
         netcat-openbsd \
+        ninja-build \
         cron \
     && rm -rf /var/lib/apt/lists/*
 
