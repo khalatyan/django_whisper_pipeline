@@ -23,7 +23,7 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
 
 COPY requirements.txt .
 COPY packages /app/packages
-RUN pip install --find-links=/app/packages -r requirements.txt
+RUN pip install --no-index --find-links=/app/packages -r requirements.txt
 
 COPY . .
 
