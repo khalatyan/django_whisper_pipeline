@@ -4,7 +4,7 @@ services:
   web:
     build: .
     container_name: web
-    entrypoint: /entrypoint_web.sh   # свой entrypoint для web
+    entrypoint: /entrypoint_web.sh
     ports:
       - "8000:8000"
     volumes:
@@ -15,11 +15,11 @@ services:
     depends_on:
       - db
       - redis
-    
+
   celery_worker:
     build: .
     container_name: celery_worker
-    entrypoint: /entrypoint_celery.sh  # свой entrypoint для worker
+    entrypoint: /entrypoint_celery.sh
     command: celery -A django_whisper_pipeline worker -l info
     env_file: .env
     volumes:
@@ -29,7 +29,7 @@ services:
     depends_on:
       - redis
       - db
-      
+
   celery_beat:
     build: .
     container_name: celery_beat
@@ -44,17 +44,18 @@ services:
     depends_on:
       - redis
       - db
-      
+
   redis:
     image: redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
-    container_name: redis
-    ports:
-      - "6379:6379"
 
   db:
     image: postgres:15-alpine
@@ -68,7 +69,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      test: ["CMD", "pg_isready", "-U", "postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
