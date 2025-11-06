@@ -20,7 +20,7 @@ def get_whisper_model():
     global MODEL
     if MODEL is None:
         logger.info("[get_whisper_model] Загружаем модель Whisper впервые...")
-        MODEL = WhisperModel("small")  # или "small", если хочешь быстрее
+        MODEL = WhisperModel("/app/models")  # или "small", если хочешь быстрее
         logger.info("[get_whisper_model] Модель Whisper успешно загружена")
     return MODEL
 

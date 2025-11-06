@@ -10,6 +10,7 @@ services:
     volumes:
       - ./media:/app/media
       - ./static:/app/static
+      - ./models:/app/models
     env_file: .env
     depends_on:
       - db
@@ -24,6 +25,7 @@ services:
     volumes:
       - ./media:/app/media
       - ./static:/app/static
+      - ./models:/app/models
     depends_on:
       - redis
       - db
@@ -38,6 +40,7 @@ services:
       - ./celerybeat-schedule:/app/celerybeat-schedule
       - ./media:/app/media
       - ./static:/app/static
+      - ./models:/app/models
     depends_on:
       - redis
       - db
