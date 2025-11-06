@@ -28,6 +28,7 @@ RUN pip install --no-cache-dir --no-index --find-links=/app/packages -r requirem
 RUN pip cache purge && rm -rf /root/.cache/pip
 
 COPY . .
+COPY models /root/.cache/huggingface/hub/
 
 COPY entrypoint_web.sh /entrypoint_web.sh
 COPY entrypoint_celery.sh /entrypoint_celery.sh
