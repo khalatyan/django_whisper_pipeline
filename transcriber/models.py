@@ -174,3 +174,37 @@ class TaskLog(models.Model):
 
     def __str__(self):
         return f"[{self.level}] {self.task.name} - {self.created_at}"
+
+
+class TaskFile(models.Model):
+    class Status(models.TextChoices):
+        NEW = "NEW", "Новый"
+        PROCESSING = "PROCESSING", "В обработке"
+        DONE = "DONE", "Готов"
+        ERROR = "ERROR", "Ошибка"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    task = models.ForeignKey(
+        "Task", on_delete=models.CASCADE, related_name="files", verbose_name="Задача"
+    )
+    filer_file = FilerFileField(
+        on_delete=models.CASCADE,
+        verbose_name="Исходный файл",
+        null=True,
+        blank=True,
+    )
+    result_text = models.TextField(blank=True, verbose_name="Результат транскрипции")
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.NEW, verbose_name="Статус"
+    )
+    error = models.TextField(blank=True, verbose_name="Ошибка")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Файл задачи"
+        verbose_name_plural = "Файлы задачи"
+
+    def __str__(self):
+        return f"{self.task.name} — {self.filer_file.original_filename if self.filer_file else 'Без файла'}"
+

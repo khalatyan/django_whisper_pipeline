@@ -1,9 +1,19 @@
-from django.conf import settings
-from django.contrib import admin
-from django.urls.base import reverse
-from django.utils.html import format_html
-from .models import Task, TaskHistory, TaskLog
 
+from django.contrib import admin
+from django.http.response import HttpResponse
+from django.urls.base import reverse
+from django.urls.conf import path
+from django.utils.html import format_html
+
+from .models import Task, TaskHistory, TaskLog, TaskFile
+
+@admin.register(TaskFile)
+class TaskFileAdmin(admin.ModelAdmin):
+    pass
+
+class TaskFileInline(admin.TabularInline):
+    model = TaskFile
+    extra = 0
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
@@ -15,6 +25,7 @@ class TaskAdmin(admin.ModelAdmin):
         "next_run_display",
         "last_run",
         "created_at",
+        "download_results_button",
     )
     list_filter = ("task_type", "status", "source_type")
     search_fields = ("name", "ya_disk_path")
@@ -22,7 +33,6 @@ class TaskAdmin(admin.ModelAdmin):
         "last_run",
         "created_at",
         "updated_at",
-        "result_file_display",
         "folder_link",
     )
     actions = ["run_task_now"]
@@ -31,9 +41,10 @@ class TaskAdmin(admin.ModelAdmin):
         ("Основное", {"fields": ("name", "task_type", "source_type")}),
         ("Источник данных", {"fields": ("ya_disk_path", "folder", "folder_link")}),
         ("Запуск задачи", {"fields": ("run_once_at", "interval", "interval_type")}),
-        ("Результат и статус", {"fields": ("result_file_display", "status", "last_error", "last_run")}),
+        ("Результат и статус", {"fields": ("status", "last_error", "last_run")}),
         ("Служебное", {"fields": ("created_at", "updated_at", "meta")}),
     )
+    inlines = (TaskFileInline, )
 
     def folder_link(self, obj):
         """Ссылка для открытия папки в django-filer (просмотр файлов)."""
@@ -54,13 +65,50 @@ class TaskAdmin(admin.ModelAdmin):
         return "-"
     next_run_display.short_description = "Следующий запуск"
 
-    def result_file_display(self, obj):
-        if obj.result_file and obj.result_file.file:
-            url = f"{settings.MEDIA_URL}{obj.result_file.file.name}"
-            return format_html('<a href="{}" download>Скачать результат</a>', url)
-        return "-"
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "<uuid:task_id>/download_results/",
+                self.admin_site.admin_view(self.download_results_view),
+                name="task_download_results",
+            ),
+        ]
+        return custom_urls + urls
 
-    result_file_display.short_description = "Файл результата"
+    def download_results_button(self, obj):
+        """Кнопка 'Скачать результаты' в списке задач."""
+        if not obj.files.filter(status=TaskFile.Status.DONE).exists():
+            return "-"
+        url = reverse("admin:task_download_results", args=[obj.id])
+        return format_html('<a class="button" href="{}">📥 Скачать результаты</a>', url)
+
+    download_results_button.short_description = "Результаты"
+    download_results_button.allow_tags = True
+
+    def download_results_view(self, request, task_id):
+        """Формируем zip-архив со всеми результатами файлов задачи."""
+        task = self.get_object(request, task_id)
+        if not task:
+            return HttpResponse("Задача не найдена", status=404)
+
+        task_files = TaskFile.objects.filter(task=task, status=TaskFile.Status.DONE).select_related("filer_file")
+        if not task_files.exists():
+            return HttpResponse("Нет готовых файлов для выгрузки.", status=400)
+
+        # Формируем общий текст
+        result_lines = []
+        for tf in task_files:
+            header = f"===== {tf.filer_file.original_filename} =====\n"
+            text = tf.result_text or "[пусто]"
+            result_lines.append(header + text + "\n\n")
+
+        combined_text = "".join(result_lines)
+
+        # Возвращаем txt-файл как attachment
+        response = HttpResponse(combined_text, content_type="text/plain; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="task_{task.id}_results.txt"'
+        return response
 
 @admin.register(TaskHistory)
 class TaskHistoryAdmin(admin.ModelAdmin):

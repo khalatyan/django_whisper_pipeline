@@ -16,3 +16,4 @@ gunicorn
 faster-whisper
 django-filer
 easy-thumbnails
+django-redis

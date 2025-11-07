@@ -11,8 +11,12 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
-    "check-tasks-every-5-minutes": {
+    "run_ready_tasks": {
         "task": "transcriber.tasks.run_ready_tasks",
+        "schedule": crontab(minute="*/1"),
+    },
+    "process_task_file": {
+        "task": "transcriber.tasks.process_task_file",
         "schedule": crontab(minute="*/1"),
     },
 }
