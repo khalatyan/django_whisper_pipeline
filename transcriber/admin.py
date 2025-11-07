@@ -9,11 +9,11 @@ from .models import Task, TaskHistory, TaskLog, TaskFile
 
 @admin.register(TaskFile)
 class TaskFileAdmin(admin.ModelAdmin):
-    pass
-
-class TaskFileInline(admin.TabularInline):
-    model = TaskFile
-    extra = 0
+    list_display = (
+        "id", "task__name", "status"
+    )
+    list_filter = ("task", "status")
+    search_fields = ("task__name", )
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
@@ -44,7 +44,6 @@ class TaskAdmin(admin.ModelAdmin):
         ("Результат и статус", {"fields": ("status", "last_error", "last_run")}),
         ("Служебное", {"fields": ("created_at", "updated_at", "meta")}),
     )
-    inlines = (TaskFileInline, )
 
     def folder_link(self, obj):
         """Ссылка для открытия папки в django-filer (просмотр файлов)."""

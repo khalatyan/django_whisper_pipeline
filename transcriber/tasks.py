@@ -183,27 +183,28 @@ def process_task_file():
             return
 
         logger.info(f"[process_task_file] Начинаем обработку файла {task_file.id}")
-        task_file.status = TaskFile.Status.PROCESSING
-        task_file.save(update_fields=["status"])
+        with transaction.atomic():
+            task_file.status = TaskFile.Status.PROCESSING
+            task_file.save(update_fields=["status"])
 
-        model = get_whisper_model()
+            model = get_whisper_model()
 
-        try:
-            segments, info = model.transcribe(task_file.filer_file.file.path, language="ru")
-            text = " ".join([seg.text for seg in segments])
+            try:
+                segments, info = model.transcribe(task_file.filer_file.file.path, language="ru")
+                text = " ".join([seg.text for seg in segments])
 
-            task_file.result_text = text
-            task_file.status = TaskFile.Status.DONE
-            task_file.error = ""
-            task_file.save(update_fields=["result_text", "status", "error"])
+                task_file.result_text = text
+                task_file.status = TaskFile.Status.DONE
+                task_file.error = ""
+                task_file.save(update_fields=["result_text", "status", "error"])
 
-            # Удаляем файл с CPU, но не из Filer-базы
-            task_file.filer_file.file.delete(save=False)
+                # Удаляем файл с CPU, но не из Filer-базы
+                task_file.filer_file.file.delete(save=False)
 
-            logger.info(f"[process_task_file] Файл {task_file.id} успешно обработан")
+                logger.info(f"[process_task_file] Файл {task_file.id} успешно обработан")
 
-        except Exception as e:
-            logger.exception(f"[process_task_file] Ошибка при обработке файла {task_file.id}: {e}")
-            task_file.status = TaskFile.Status.ERROR
-            task_file.error = str(e)
-            task_file.save(update_fields=["status", "error"])
+            except Exception as e:
+                logger.exception(f"[process_task_file] Ошибка при обработке файла {task_file.id}: {e}")
+                task_file.status = TaskFile.Status.ERROR
+                task_file.error = str(e)
+                task_file.save(update_fields=["status", "error"])
