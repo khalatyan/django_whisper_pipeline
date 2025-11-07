@@ -1,6 +1,7 @@
 import io
 import logging
 from contextlib import contextmanager
+from datetime import timedelta
 
 import yadisk
 from django.core.cache import cache
@@ -162,6 +163,16 @@ def run_ready_tasks():
                 task.last_run = timezone.now()
                 task.save(update_fields=["status", "last_run"])
 
+        now = timezone.now()
+        threshold = now - timedelta(minutes=30)
+        updated_files = (
+            TaskFile.objects
+            .filter(task__status=Task.Status.PROCESSING, updated_at__lt=threshold, result_text__isnull=True)
+        )
+        for file in updated_files:
+            file.status = TaskFile.Status.NEW
+            file.save(update_fields=["status"])
+
 
 @celery_app.task
 def process_task_file():
@@ -183,28 +194,28 @@ def process_task_file():
             return
 
         logger.info(f"[process_task_file] Начинаем обработку файла {task_file.id}")
-        with transaction.atomic():
-            task_file.status = TaskFile.Status.PROCESSING
-            task_file.save(update_fields=["status"])
+        task_file.status = TaskFile.Status.PROCESSING
+        task_file.updated_at = timezone.now()
+        task_file.save(update_fields=["status", "updated_at"])
 
-            model = get_whisper_model()
+        model = get_whisper_model()
 
-            try:
-                segments, info = model.transcribe(task_file.filer_file.file.path, language="ru")
-                text = " ".join([seg.text for seg in segments])
+        try:
+            segments, info = model.transcribe(task_file.filer_file.file.path, language="ru")
+            text = " ".join([seg.text for seg in segments])
 
-                task_file.result_text = text
-                task_file.status = TaskFile.Status.DONE
-                task_file.error = ""
-                task_file.save(update_fields=["result_text", "status", "error"])
+            task_file.result_text = text
+            task_file.status = TaskFile.Status.DONE
+            task_file.error = ""
+            task_file.save(update_fields=["result_text", "status", "error"])
 
-                # Удаляем файл с CPU, но не из Filer-базы
-                task_file.filer_file.file.delete(save=False)
+            # Удаляем файл с CPU, но не из Filer-базы
+            task_file.filer_file.file.delete(save=False)
 
-                logger.info(f"[process_task_file] Файл {task_file.id} успешно обработан")
+            logger.info(f"[process_task_file] Файл {task_file.id} успешно обработан")
 
-            except Exception as e:
-                logger.exception(f"[process_task_file] Ошибка при обработке файла {task_file.id}: {e}")
-                task_file.status = TaskFile.Status.ERROR
-                task_file.error = str(e)
-                task_file.save(update_fields=["status", "error"])
+        except Exception as e:
+            logger.exception(f"[process_task_file] Ошибка при обработке файла {task_file.id}: {e}")
+            task_file.status = TaskFile.Status.ERROR
+            task_file.error = str(e)
+            task_file.save(update_fields=["status", "error"])
