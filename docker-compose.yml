@@ -1,10 +1,9 @@
 version: "3.9"
 
 services:
-  web:
+  app:
     build: .
-    container_name: web
-    entrypoint: /entrypoint_web.sh
+    container_name: django_app
     ports:
       - "8000:8000"
     volumes:
@@ -16,35 +15,6 @@ services:
       - db
       - redis
 
-  celery_worker:
-    build: .
-    container_name: celery_worker
-    entrypoint: /entrypoint_celery.sh
-    command: celery -A django_whisper_pipeline worker -l info
-    env_file: .env
-    volumes:
-      - ./media:/app/media
-      - ./static:/app/static
-      - ./models:/app/models
-    depends_on:
-      - redis
-      - db
-
-  celery_beat:
-    build: .
-    container_name: celery_beat
-    entrypoint: /entrypoint_celery.sh
-    command: celery -A django_whisper_pipeline beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    env_file: .env
-    volumes:
-      - ./celerybeat-schedule:/app/celerybeat-schedule
-      - ./media:/app/media
-      - ./static:/app/static
-      - ./models:/app/models
-    depends_on:
-      - redis
-      - db
-
   redis:
     image: redis:7-alpine
     container_name: redis
@@ -52,7 +22,7 @@ services:
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5

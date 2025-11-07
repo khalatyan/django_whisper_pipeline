@@ -5,7 +5,6 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 WORKDIR /app
 
-# Используем официальные зеркала (возвращаем исходные)
 RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib non-free" > /etc/apt/sources.list && \
     echo "deb [trusted=yes] http://mirror.yandex.ru/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list && \
     echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
@@ -30,6 +29,7 @@ RUN pip cache purge && rm -rf /root/.cache/pip
 COPY . .
 COPY models /root/.cache/huggingface/hub/
 
-COPY entrypoint_web.sh /entrypoint_web.sh
-COPY entrypoint_celery.sh /entrypoint_celery.sh
-RUN chmod +x /entrypoint_web.sh /entrypoint_celery.sh
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
