@@ -144,9 +144,11 @@ def run_ready_tasks():
                 with transaction.atomic():
                     task.status = Task.Status.PROCESSING
                     for file in File.objects.filter(folder=task.folder):
-                        file.delete(save=False)
+                        file.file.delete(save=False)
+                        file.delete()
                     for file in task.files.all():
                         file.filer_file.delete(save=False)
+                        file.delete()
                     if task.source_type == task.SourceType.YADISK:
                         download_from_yadisk_task(task.id)
                     fill_task_files(task.id)
@@ -157,7 +159,8 @@ def run_ready_tasks():
         for task in processed_tasks:
             if not task.files.exclude(status=Task.Status.DONE).exists():
                 task.status = Task.Status.DONE
-                task.save(update_fields=["status"])
+                task.last_run = timezone.now()
+                task.save(update_fields=["status", "last_run"])
 
 
 @celery_app.task
