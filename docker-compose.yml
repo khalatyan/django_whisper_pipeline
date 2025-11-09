@@ -1,9 +1,10 @@
 version: "3.9"
 
 services:
-  app:
+  web:
     build: .
-    container_name: django_app
+    container_name: django_web
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
     ports:
       - "8000:8000"
     volumes:
@@ -14,6 +15,31 @@ services:
     depends_on:
       - db
       - redis
+    restart: always
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: ["celery", "-A", "django_whisper_pipeline", "worker", "-l", "info", "-P", "solo", "-c", "1"]
+    volumes:
+      - ./media:/app/media
+      - ./models:/app/models
+    env_file: .env
+    depends_on:
+      - redis
+      - db
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: ["celery", "-A", "django_whisper_pipeline", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+    volumes:
+      - ./media:/app/media
+      - ./models:/app/models
+    env_file: .env
+    depends_on:
+      - redis
+      - db
 
   redis:
     image: redis:7-alpine
@@ -26,6 +52,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: always
 
   db:
     image: postgres:15-alpine
@@ -43,6 +70,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: always
 
 volumes:
   postgres_data:

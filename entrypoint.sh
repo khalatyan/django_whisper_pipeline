@@ -7,7 +7,7 @@ until nc -z "$POSTGRES_HOST" "$POSTGRES_PORT"; do
   sleep 1
 done
 
-echo "Postgres доступен, запускаем миграции..."
+echo "Postgres доступен, выполняем миграции..."
 python manage.py migrate --noinput
 python manage.py collectstatic --noinput
 
@@ -23,12 +23,4 @@ if not User.objects.filter(username="${DJANGO_SUPERUSER_USERNAME:-admin}").exist
     )
 END
 
-# Запускаем все процессы в фоне
-echo "Запускаем Celery worker..."
-celery -A django_whisper_pipeline worker -l info &
-
-echo "Запускаем Celery beat..."
-celery -A django_whisper_pipeline beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler &
-
-echo "Запускаем Django web..."
-exec python manage.py runserver 0.0.0.0:8000
+exec "$@"

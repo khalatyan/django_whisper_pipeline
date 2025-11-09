@@ -23,12 +23,10 @@ RUN echo "deb [trusted=yes] http://mirror.yandex.ru/debian bullseye main contrib
 
 COPY requirements.txt .
 COPY packages /app/packages
-RUN pip install --no-cache-dir --no-index --find-links=/app/packages -r requirements.txt
-RUN #pip install -r requirements.txt
+RUN pip install -r requirements.txt
 RUN pip cache purge && rm -rf /root/.cache/pip
 
 COPY . .
-COPY models /root/.cache/huggingface/hub/
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

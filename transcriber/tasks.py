@@ -1,7 +1,17 @@
 import io
 import logging
+import os
+import subprocess
 from contextlib import contextmanager
 from datetime import timedelta
+import os
+import tempfile
+from typing import List
+
+from pydub import AudioSegment
+from celery import shared_task
+import logging
+
 
 import yadisk
 from django.core.cache import cache
@@ -45,7 +55,7 @@ def get_whisper_model():
     if MODEL is None:
         logger.info("[get_whisper_model] Загружаем модель Whisper впервые...")
         # MODEL = WhisperModel("/app/models", device="cpu", compute_type="int8")  # или "small", если хочешь быстрее
-        MODEL = WhisperModel("small")  # или "small", если хочешь быстрее
+        MODEL = WhisperModel("tiny", device="cpu", compute_type="int8")
         logger.info("[get_whisper_model] Модель Whisper успешно загружена")
     return MODEL
 
@@ -163,22 +173,47 @@ def run_ready_tasks():
                 task.last_run = timezone.now()
                 task.save(update_fields=["status", "last_run"])
 
-        now = timezone.now()
-        threshold = now - timedelta(minutes=30)
-        updated_files = (
-            TaskFile.objects
-            .filter(task__status=Task.Status.PROCESSING, updated_at__lt=threshold, result_text__isnull=True)
-        )
-        for file in updated_files:
-            file.status = TaskFile.Status.NEW
-            file.save(update_fields=["status"])
 
+def split_audio_ffmpeg(file_path: str, chunk_length_sec: int = 30) -> List[str]:
+    """
+    Разбивает аудио на чанки фиксированной длины через ffmpeg.
+    Возвращает список временных файлов.
+    """
+    # Получаем длительность файла
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", file_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+    duration = float(result.stdout.strip())
 
-@celery_app.task
+    chunks = []
+    for i in range(0, int(duration), chunk_length_sec):
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav")
+        os.close(tmp_fd)
+        # ffmpeg: добавляем -y, чтобы перезаписывать файлы без запроса
+        subprocess.run([
+            "ffmpeg",
+            "-y",  # <-- вот это важно
+            "-hide_banner",
+            "-loglevel", "error",
+            "-i", file_path,
+            "-ss", str(i),
+            "-t", str(chunk_length_sec),
+            "-ar", "16000",  # частота дискретизации
+            "-ac", "1",  # моно
+            tmp_path
+        ], check=True)
+        chunks.append(tmp_path)
+    return chunks
+
+@shared_task
 def process_task_file():
     lock_name = "process_task_file_global_lock"
 
-    with single_task_lock(lock_name, timeout=1200) as acquired:
+    with single_task_lock(lock_name) as acquired:
         if not acquired:
             logger.info("[process_task_file] Пропуск — другая задача уже выполняется")
             return
@@ -201,15 +236,27 @@ def process_task_file():
         model = get_whisper_model()
 
         try:
-            segments, info = model.transcribe(task_file.filer_file.file.path, language="ru")
-            text = " ".join([seg.text for seg in segments])
+            file_path = task_file.filer_file.file.path
+            logger.info(f"[process_task_file] <UNK> <UNK> <UNK> <UNK> {file_path}")
+            chunks = split_audio_ffmpeg(file_path, chunk_length_sec=30)
+            logger.info(f"[process_task_file] Разбито на {len(chunks)} частей")
 
-            task_file.result_text = text
+            full_text = []
+            for i, chunk_path in enumerate(chunks, start=1):
+                logger.info(f"[process_task_file] Обрабатываем часть {i}/{len(chunks)}")
+                segments, info = model.transcribe(chunk_path, language="ru", log_progress=True)
+                chunk_text = " ".join([seg.text for seg in segments])
+                full_text.append(chunk_text)
+                os.remove(chunk_path)
+
+            result_text = " ".join(full_text)
+
+            task_file.result_text = result_text
             task_file.status = TaskFile.Status.DONE
             task_file.error = ""
             task_file.save(update_fields=["result_text", "status", "error"])
 
-            # Удаляем файл с CPU, но не из Filer-базы
+            # Удаляем исходный файл (не из Filer-базы)
             task_file.filer_file.file.delete(save=False)
 
             logger.info(f"[process_task_file] Файл {task_file.id} успешно обработан")
