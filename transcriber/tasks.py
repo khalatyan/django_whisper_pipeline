@@ -154,13 +154,13 @@ def run_ready_tasks():
             if task.is_ready_to_run(now):
                 with transaction.atomic():
                     task.status = Task.Status.PROCESSING
-                    for file in File.objects.filter(folder=task.folder):
-                        file.file.delete(save=False)
-                        file.delete()
                     for file in task.files.all():
                         file.filer_file.delete(save=False)
                         file.delete()
                     if task.source_type == task.SourceType.YADISK:
+                        for file in File.objects.filter(folder=task.folder):
+                            file.file.delete(save=False)
+                            file.delete()
                         download_from_yadisk_task(task.id)
                     fill_task_files(task.id)
 
